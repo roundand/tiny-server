@@ -16,9 +16,8 @@ type UserId struct {
 	IsVerified bool
 }
 
-var userJson []byte
-
 // newUUID generates a random UUID according to RFC 4122
+// (nicked from http://play.golang.org/p/4FkNSiUDMg, via http://stackoverflow.com/questions/15130321/is-there-a-method-to-generate-a-uuid-with-go-language#comment42045723_15130965)
 func newUUID() (string, error) {
 	uuid := make([]byte, 16)
 	n, err := io.ReadFull(rand.Reader, uuid)
@@ -32,14 +31,20 @@ func newUUID() (string, error) {
 	return fmt.Sprintf("%x-%x-%x-%x-%x", uuid[0:4], uuid[4:6], uuid[6:8], uuid[8:10], uuid[10:]), nil
 }
 
+func ReportError(w http.ResponseWriter, err error, code int) {
+	http.Error(w, err.Error(), code)
+	log.Printf("Error %v: %s\n", code, err.Error())
+}
+
 func handler(w http.ResponseWriter, r *http.Request) {
 
 	uuid, err := newUUID()
 	if err != nil {
-		log.Fatalf("error: %v\n", err)
+		ReportError(w, err, 500)
+		return
 	}
 
-	var user = UserId{
+	user := UserId{
 		UserId:     uuid,
 		IsNewUser:  false,
 		IsVerified: true,
@@ -47,7 +52,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 	userJson, err := json.Marshal(user)
 	if err != nil {
-		log.Fatalf("JSON marshalling failed: %s", err)
+		ReportError(w, err, 500)
+		return
 	}
 	fmt.Fprintf(w, "%s", userJson)
 }
